@@ -12,7 +12,7 @@ def test_manifest_schema_validation(api_client, auth_header):
     data = r.json()
 
     # Загружаем schema.json
-    with open("manifest_schema.json", "r", encoding="utf-8") as f:
+    with open("../manifest_schema.json", "r", encoding="utf-8") as f:
         schema = json.load(f)
 
     validate(instance=data, schema=schema)
