@@ -10,7 +10,7 @@ import boto3
 from botocore.config import Config
 from jsonschema import validate, ValidationError
 
-BASE_URL = os.getenv("BASE_URL", "https://e-flow.api.astrazenecacloud.ru")
+BASE_URL = os.getenv("BASE_URL", "https://dev-eflow.api.astrazenecacloud.ru")
 API_PREFIX = os.getenv("API_PREFIX", "/api/v1")
 FULL_BASE = BASE_URL.rstrip("/") + API_PREFIX
 
