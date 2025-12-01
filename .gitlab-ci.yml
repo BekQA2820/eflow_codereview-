@@ -21,15 +21,18 @@ run_autotests:
   tags:
     - apps
   rules:
-    - if: '$CI_PIPELINE_SOURCE == "schedule"'       # запуск по расписанию
-    - if: '$CI_MERGE_REQUEST_ID'                    # запуск при мердже
-    - if: '$CI_COMMIT_BRANCH == "main"'             # запуск при пуше
-    - when: manual                                   # возможность ручного старта
-
-# Уведомление о падении тестов
+    - if: '$CI_PIPELINE_SOURCE == "pipeline"'        # запуск вручную из UI
+      when: on_success
+    - if: '$CI_PIPELINE_SOURCE == "web"'             # ручной Run pipeline
+      when: on_success
+    - if: '$CI_COMMIT_BRANCH == "main"'              # при пуше в main
+      when: on_success
+    - if: '$CI_MERGE_REQUEST_ID'                     # в MR
+      when: on_success
+ 
 notify_fail:
   stage: notify
   script:
     - echo "❗ Автотесты упали. Проверь отчёты."
   when: on_failure
-  allow_failure: true      # <--уведомление не ломает пайплайн
+  allow_failure: true
