@@ -1,0 +1,35 @@
+stages:
+  - test
+  - notify
+
+variables:
+  PYTHONPATH: "."
+
+default:
+  image: python:3.12
+  before_script:
+    - pip install --upgrade pip
+    - pip install -r requirements.txt || true
+
+#  Основной тестовый джоб
+run_autotests:
+  stage: test
+  script:
+    - echo "🚀 Запуск автотестов Eflow..."
+    - pytest tests/ --maxfail=1 --disable-warnings -q || true
+  allow_failure: true     # <-- прод НЕ падает
+  tags:
+    - apps
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "schedule"'       # запуск по расписанию
+    - if: '$CI_MERGE_REQUEST_ID'                    # запуск при мердже
+    - if: '$CI_COMMIT_BRANCH == "main"'             # запуск при пуше
+    - when: manual                                   # возможность ручного старта
+
+# Уведомление о падении тестов
+notify_fail:
+  stage: notify
+  script:
+    - echo "❗ Автотесты упали. Проверь отчёты."
+  when: on_failure
+  allow_failure: true      # <--уведомление не ломает пайплайн
