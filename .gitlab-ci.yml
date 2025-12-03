@@ -11,25 +11,43 @@ default:
     - pip install --upgrade pip
     - pip install -r requirements.txt || true
 
-#  Основной тестовый джоб
+
+
+# 📌 Основной запуск автотестов
 run_autotests:
   stage: test
   script:
     - echo "🚀 Запуск автотестов Eflow..."
     - pytest tests/ --maxfail=1 --disable-warnings -q || true
-  allow_failure: true     # <-- прод НЕ падает
+  allow_failure: true          # прод НЕ падает даже если тесты упали
   tags:
     - apps
   rules:
-    - if: '$CI_PIPELINE_SOURCE == "schedule"'       # запуск по расписанию
-    - if: '$CI_MERGE_REQUEST_ID'                    # запуск при мердже
-    - if: '$CI_COMMIT_BRANCH == "main"'             # запуск при пуше
-    - when: manual                                   # возможность ручного старта
+    # 1. Merge Request
+    - if: '$CI_MERGE_REQUEST_ID'
+      when: on_success
 
-# Уведомление о падении тестов
+    # 2. Push в main
+    - if: '$CI_COMMIT_BRANCH == "main"'
+      when: on_success
+
+    # 3. Кнопка "Run Pipeline"
+    - if: '$CI_PIPELINE_SOURCE == "web"'
+      when: manual
+
+    # 4. Вручную через кнопку Play
+    - if: '$CI_PIPELINE_SOURCE == "pipeline"'
+      when: manual
+
+    # 5. Если ничего не подошло
+    - when: never
+
+
+
+# 📌 Уведомления при падении тестов
 notify_fail:
   stage: notify
   script:
     - echo "❗ Автотесты упали. Проверь отчёты."
   when: on_failure
-  allow_failure: true      # <--уведомление не ломает пайплайн
+  allow_failure: true
