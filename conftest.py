@@ -2,7 +2,6 @@
 import os
 import hashlib
 import json
-import time
 import pytest
 import requests
 import redis
@@ -64,11 +63,11 @@ def api_client():
         def get(self, path, headers=None, params=None):
             return requests.get(f"{self.base}{path}", headers=headers or {}, params=params, timeout=10)
 
-        def patch(self, path, json=None, headers=None):
-            return requests.patch(f"{self.base}{path}", json=json, headers=headers or {}, timeout=10)
+        def patch(self, path, json_body=None, headers=None):
+            return requests.patch(f"{self.base}{path}", json=json_body, headers=headers or {}, timeout=10)
 
-        def post(self, path, json=None, headers=None):
-            return requests.post(f"{self.base}{path}", json=json, headers=headers or {}, timeout=10)
+        def post(self, path, json_body=None, headers=None):
+            return requests.post(f"{self.base}{path}", json=json_body, headers=headers or {}, timeout=10)
 
         def delete(self, path, headers=None):
             return requests.delete(f"{self.base}{path}", headers=headers or {}, timeout=10)
