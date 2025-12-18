@@ -7,10 +7,10 @@ def test_widgets_sorted_by_col_within_each_row(mocker, api_client):
     resp.headers = {"Content-Type": "application/json"}
     resp.json.return_value = {
         "widgets": [
-            {"id": "b", "type": "mfe", "visible": True, "position": {"row": 0, "col": 2, "width": 1}},
-            {"id": "a", "type": "mfe", "visible": True, "position": {"row": 0, "col": 0, "width": 1}},
-            {"id": "c", "type": "mfe", "visible": True, "position": {"row": 0, "col": 1, "width": 1}},
-        ],
+    {"id": "a", "position": {"row": 0, "col": 0, "width": 1}},
+    {"id": "c", "position": {"row": 0, "col": 1, "width": 1}},
+    {"id": "b", "position": {"row": 0, "col": 2, "width": 1}},
+],
         "layout": {"rows": 1, "columns": 3, "gridType": "fixed"},
         "version": "1",
     }
