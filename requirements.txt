@@ -5,3 +5,5 @@ boto3>=1.30.0
 jsonschema>=4.18.0
 pytest-xdist>=2.5.0
 python-dotenv>=1.0.0
+pytest-mock>=3.12.0
+moto[s3]>=5.0.0
