@@ -1,4 +1,4 @@
-from conftest import compute_roles_hash
+from utils.roles import compute_roles_hash
 import pytest
 from unittest.mock import Mock
 

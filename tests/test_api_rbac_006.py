@@ -1,6 +1,6 @@
 import pytest
 from unittest.mock import Mock
-from conftest import compute_roles_hash
+from utils.roles import compute_roles_hash
 
 MANIFEST = "/api/v1/manifest"
 
