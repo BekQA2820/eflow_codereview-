@@ -1,0 +1,91 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "required": ["layout", "widgets", "theme", "locale"],
+  "properties": {
+    "layout": {
+      "type": "string",
+      "minLength": 1
+    },
+    "layout_strategy": {
+      "type": "string"
+    },
+    "theme": {
+      "type": "string",
+      "minLength": 1
+    },
+    "locale": {
+      "type": "string",
+      "minLength": 2
+    },
+    "widgets": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "mfe",
+          "remoteEntry",
+          "component",
+          "position",
+          "size",
+          "visible"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "mfe": {
+            "type": "string",
+            "minLength": 1
+          },
+          "remoteEntry": {
+            "type": "string",
+            "pattern": "^/mfe/.+/remoteEntry\\.js$"
+          },
+          "component": {
+            "type": "string",
+            "minLength": 1
+          },
+          "position": {
+            "type": "object",
+            "required": ["row", "col"],
+            "properties": {
+              "row": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "col": {
+                "type": "integer",
+                "minimum": 0
+              }
+            },
+            "additionalProperties": false
+          },
+          "size": {
+            "type": "object",
+            "required": ["width", "height"],
+            "properties": {
+              "width": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "height": {
+                "type": "integer",
+                "minimum": 1
+              }
+            },
+            "additionalProperties": false
+          },
+          "visible": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}
