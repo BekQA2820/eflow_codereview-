@@ -94,40 +94,13 @@ def s3_client():
 
 @pytest.fixture
 def api_client():
-    class API:
-        def __init__(self, base_url: str):
-            self.base = base_url.rstrip("/")
-
-        def get(self, path, headers=None, params=None):
-            return requests.get(
-                f"{self.base}{path}",
-                headers=headers or {},
-                params=params,
-                timeout=10,
-            )
-
-        def post(self, path, json_body=None, headers=None):
-            return requests.post(
-                f"{self.base}{path}",
-                json=json_body,
-                headers=headers or {},
-                timeout=10,
-            )
-
-        def patch(self, path, json_body=None, headers=None):
-            return requests.patch(
-                f"{self.base}{path}",
-                json=json_body,
-                headers=headers or {},
-                timeout=10,
-            )
-
-        def delete(self, path, headers=None):
-            return requests.delete(
-                f"{self.base}{path}",
-                headers=headers or {},
-                timeout=10,
-            )
+    def put(self, path, json_body=None, headers=None):
+        return requests.put(
+            f"{self.base}{path}",
+            json=json_body,
+            headers=headers or {},
+            timeout=10,
+        )
 
     return API(FULL_BASE)
 
