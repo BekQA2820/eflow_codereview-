@@ -59,7 +59,7 @@ def roles_hash():
 
 
 # ============================================================
-# API client (SAFE, controllable)
+# API client (FIXED)
 # ============================================================
 
 @pytest.fixture
@@ -71,20 +71,28 @@ def api_client():
         def _url(self, path: str) -> str:
             return f"{self.base}{path}"
 
+        def request(self, method, path, **kwargs):
+            return requests.request(
+                method=method,
+                url=self._url(path),
+                timeout=10,
+                **kwargs,
+            )
+
         def get(self, path, headers=None, params=None):
-            return requests.get(self._url(path), headers=headers or {}, params=params, timeout=10)
+            return self.request("GET", path, headers=headers or {}, params=params)
 
         def post(self, path, json=None, headers=None):
-            return requests.post(self._url(path), json=json, headers=headers or {}, timeout=10)
+            return self.request("POST", path, headers=headers or {}, json=json)
 
         def put(self, path, json=None, headers=None):
-            return requests.put(self._url(path), json=json, headers=headers or {}, timeout=10)
+            return self.request("PUT", path, headers=headers or {}, json=json)
 
         def patch(self, path, json=None, headers=None):
-            return requests.patch(self._url(path), json=json, headers=headers or {}, timeout=10)
+            return self.request("PATCH", path, headers=headers or {}, json=json)
 
         def delete(self, path, headers=None):
-            return requests.delete(self._url(path), headers=headers or {}, timeout=10)
+            return self.request("DELETE", path, headers=headers or {})
 
     return API(FULL_BASE)
 
@@ -113,6 +121,29 @@ def invalid_auth_headers():
 @pytest.fixture
 def auth_header(auth_headers):
     return auth_headers
+
+
+# backward compatibility for tests
+@pytest.fixture
+def auth_header_other_user():
+    return {"Authorization": "Bearer other.user.token"}
+
+
+@pytest.fixture
+def auth_header_factory():
+    def _factory(token: str):
+        return {"Authorization": f"Bearer {token}"}
+    return _factory
+
+
+@pytest.fixture
+def employee_token():
+    return "employee.fake.token"
+
+
+@pytest.fixture
+def admin_token():
+    return "admin.fake.token"
 
 
 # ============================================================
@@ -147,7 +178,7 @@ def assert_json_schema(instance, schema):
 # ============================================================
 
 @pytest.fixture
-def mock_redis(mocker):
+def redis_client():
     store = {}
 
     redis_mock = Mock()
@@ -155,39 +186,18 @@ def mock_redis(mocker):
     redis_mock.set.side_effect = lambda k, v, ex=None: store.__setitem__(k, v)
     redis_mock.delete.side_effect = lambda k: store.pop(k, None)
 
-    mocker.patch("redis.from_url", return_value=redis_mock)
     return redis_mock
+
+
+@pytest.fixture
+def mock_redis(mocker, redis_client):
+    mocker.patch("redis.from_url", return_value=redis_client)
+    return redis_client
 
 
 # ============================================================
 # S3 mock
-# ============================================================
-
-@pytest.fixture
-def mock_s3(mocker):
-    s3 = Mock()
-
-    data = {
-        "widgets": [
-            {
-                "id": "w1",
-                "visible": True,
-                "position": {"row": 0, "col": 0, "width": 1},
-                "size": {"width": 2, "height": 2},
-            }
-        ]
-    }
-
-    s3.get_object.return_value = {
-        "Body": Mock(read=lambda: json.dumps(data).encode("utf-8"))
-    }
-    s3.head_object.return_value = {}
-    s3.put_object.return_value = True
-
-    mocker.patch("boto3.session.Session.client", return_value=s3)
-    return s3
-
-
+# =================================================
 # ============================================================
 # GLOBAL network safety
 # ============================================================
@@ -202,9 +212,4 @@ def block_real_network(mocker):
     def _blocked(*args, **kwargs):
         raise RuntimeError("REAL NETWORK CALL IS BLOCKED. USE MOCK.")
 
-    mocker.patch("requests.get", side_effect=_blocked)
-    mocker.patch("requests.post", side_effect=_blocked)
-    mocker.patch("requests.put", side_effect=_blocked)
-    mocker.patch("requests.patch", side_effect=_blocked)
-    mocker.patch("requests.delete", side_effect=_blocked)
-    mocker.patch("requests.head", side_effect=_blocked)
+    mocker.patch("requests.request", side_effect=_blocked)
