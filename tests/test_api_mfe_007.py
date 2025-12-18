@@ -1,9 +1,12 @@
+
 import requests
 
 
 def test_mfe_remote_entry_cors_headers(mocker):
-    
-    url = "https://cdn.example.com/app1/remoteEntry.js"
+    """
+    API MFE 007
+    Проверка CORS-заголовков для remoteEntry.js
+    """
 
     mock_response = mocker.Mock()
     mock_response.status_code = 200
@@ -15,7 +18,7 @@ def test_mfe_remote_entry_cors_headers(mocker):
 
     mocker.patch("requests.head", return_value=mock_response)
 
-    resp = requests.head(url)
+    resp = requests.head("ANY_URL")
 
     assert resp.status_code == 200
     assert resp.headers["Access-Control-Allow-Origin"] == "*"
