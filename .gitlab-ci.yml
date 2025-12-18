@@ -8,6 +8,7 @@ variables:
 default:
   image: python:3.12
   before_script:
+    - pip install --root-user-action=ignore -r requirements.txt || true
     - pip install --upgrade pip
     - pip install -r requirements.txt || true
 
