@@ -1,242 +1,186 @@
-# conftest.py
 import os
 import json
-import hashlib
 import pytest
 import requests
-import redis
-import boto3
-from botocore.config import Config
-from jsonschema import validate, ValidationError
-from unittest.mock import Mock
+from dotenv import load_dotenv
 
-# ============================================================
-# Base API config
-# ============================================================
+load_dotenv()
 
-BASE_URL = os.getenv("BASE_URL", "https://dev-eflow-api.astrazenecacloud.ru")
-API_PREFIX = os.getenv("API_PREFIX", "/api/v1")
-FULL_BASE = BASE_URL.rstrip("/") + API_PREFIX
+# =========================
+# CONFIG
+# =========================
 
-# ============================================================
-# External services config
-# ============================================================
+BASE_URL = os.getenv(
+    "BASE_URL",
+    "https://dev-eflow-api.astrazenecacloud.ru",
+).rstrip("/")
 
-REDIS_URL = os.getenv("REDIS_URL")
+API_PREFIX = "/api/v1"
 
-S3_ENDPOINT = os.getenv("S3_ENDPOINT")
-S3_BUCKET = os.getenv("S3_BUCKET", "widgets-config")
-AWS_ACCESS_KEY = os.getenv("AWS_ACCESS_KEY_ID")
-AWS_SECRET_KEY = os.getenv("AWS_SECRET_ACCESS_KEY")
-AWS_REGION = os.getenv("AWS_REGION", "ru-central1")
+TEST_TOKEN_VALID = os.getenv("TEST_TOKEN_VALID")
 
-# ============================================================
-# Schemas
-# ============================================================
+# =========================
+# NETWORK BLOCKER
+# =========================
 
-SCHEMAS_DIR = os.path.join(os.path.dirname(__file__), "schemas")
-MANIFEST_SCHEMA_PATH = os.path.join(SCHEMAS_DIR, "manifest_schema.json")
-PROFILE_SCHEMA_PATH = os.path.join(SCHEMAS_DIR, "profile_schema.json")
+@pytest.fixture(autouse=True)
+def block_real_http_calls(monkeypatch):
+    """
+    Блокирует любые реальные HTTP вызовы.
+    Любой запрос без mock приводит к явному падению теста.
+    """
 
-# ============================================================
-# Roles hash
-# ============================================================
+    def _blocked(*args, **kwargs):
+        raise RuntimeError(
+            "REAL NETWORK CALL IS BLOCKED. USE MOCK."
+        )
 
-def compute_roles_hash(roles: list[str]) -> str:
-    normalized = sorted({r.lower() for r in roles if isinstance(r, str)})
-    h = hashlib.blake2b(digest_size=16)
-    h.update(",".join(normalized).encode("utf-8"))
-    return h.hexdigest()
+    monkeypatch.setattr(requests, "request", _blocked)
+    monkeypatch.setattr(requests, "get", _blocked)
+    monkeypatch.setattr(requests, "post", _blocked)
+    monkeypatch.setattr(requests, "patch", _blocked)
+    monkeypatch.setattr(requests, "put", _blocked)
+    monkeypatch.setattr(requests, "delete", _blocked)
+    monkeypatch.setattr(requests, "head", _blocked)
 
-@pytest.fixture
-def roles_hash():
-    return compute_roles_hash
 
-# ============================================================
-# API client (SAFE)
-# ============================================================
+# =========================
+# API CLIENT
+# =========================
 
 @pytest.fixture
 def api_client():
     class API:
-        def __init__(self, base_url: str):
-            self.base = base_url.rstrip("/")
-
         def _url(self, path: str) -> str:
-            return f"{self.base}{path}"
+            if not path.startswith("/"):
+                path = "/" + path
+
+            # path может быть уже с /api/v1
+            if path.startswith(API_PREFIX):
+                return f"{BASE_URL}{path}"
+
+            return f"{BASE_URL}{API_PREFIX}{path}"
 
         def get(self, path, headers=None, params=None):
-            return requests.get(self._url(path), headers=headers or {}, params=params, timeout=10)
+            return requests.request(
+                "GET",
+                self._url(path),
+                headers=headers or {},
+                params=params,
+                timeout=10,
+            )
 
         def post(self, path, json=None, headers=None):
-            return requests.post(self._url(path), json=json, headers=headers or {}, timeout=10)
-
-        def put(self, path, json=None, headers=None):
-            return requests.put(self._url(path), json=json, headers=headers or {}, timeout=10)
+            return requests.request(
+                "POST",
+                self._url(path),
+                headers=headers or {},
+                json=json,
+                timeout=10,
+            )
 
         def patch(self, path, json=None, headers=None):
-            return requests.patch(self._url(path), json=json, headers=headers or {}, timeout=10)
+            return requests.request(
+                "PATCH",
+                self._url(path),
+                headers=headers or {},
+                json=json,
+                timeout=10,
+            )
+
+        def put(self, path, json=None, headers=None):
+            return requests.request(
+                "PUT",
+                self._url(path),
+                headers=headers or {},
+                json=json,
+                timeout=10,
+            )
 
         def delete(self, path, headers=None):
-            return requests.delete(self._url(path), headers=headers or {}, timeout=10)
+            return requests.request(
+                "DELETE",
+                self._url(path),
+                headers=headers or {},
+                timeout=10,
+            )
 
-    return API(FULL_BASE)
+    return API()
 
-# ============================================================
-# Auth tokens and headers
-# ============================================================
 
-@pytest.fixture(scope="session")
-def token_valid():
-    return os.getenv("TEST_TOKEN_VALID")
-
-@pytest.fixture(scope="session")
-def token_other_user():
-    return os.getenv("TEST_TOKEN_OTHER", "other.user.token")
-
-@pytest.fixture(scope="session")
-def token_admin():
-    return os.getenv("TEST_TOKEN_ADMIN", "admin.token")
-
-@pytest.fixture(scope="session")
-def token_employee():
-    return os.getenv("TEST_TOKEN_EMPLOYEE", "employee.token")
+# =========================
+# AUTH FIXTURES
+# =========================
 
 @pytest.fixture
-def auth_headers(token_valid):
-    if not token_valid:
+def token_valid():
+    if not TEST_TOKEN_VALID:
         pytest.skip("TEST_TOKEN_VALID is not set")
+    return TEST_TOKEN_VALID
+
+
+@pytest.fixture
+def auth_header(token_valid):
     return {"Authorization": f"Bearer {token_valid}"}
 
-@pytest.fixture
-def auth_header(auth_headers):
-    return auth_headers
-
-@pytest.fixture
-def auth_header_other_user(token_other_user):
-    return {"Authorization": f"Bearer {token_other_user}"}
 
 @pytest.fixture
 def auth_header_factory():
-    def _factory(token: str):
+    def _factory(roles):
+        token = str(roles)
         return {"Authorization": f"Bearer {token}"}
     return _factory
 
-@pytest.fixture
-def admin_token(token_admin):
-    return token_admin
 
 @pytest.fixture
-def employee_token(token_employee):
-    return token_employee
+def auth_header_other_user():
+    return {"Authorization": "Bearer other.user.token"}
+
 
 @pytest.fixture
-def invalid_auth_headers():
-    return {"Authorization": "Bearer invalid.token.value"}
+def employee_token():
+    return "employee.token"
+
 
 @pytest.fixture
-def valid_prid():
-    return "00000000-0000-0000-0000-000000000001"
+def admin_token():
+    return "admin.token"
 
-# ============================================================
-# JSON schema helpers
-# ============================================================
 
-@pytest.fixture
-def manifest_schema():
-    if not os.path.exists(MANIFEST_SCHEMA_PATH):
-        pytest.skip("manifest schema missing")
-    with open(MANIFEST_SCHEMA_PATH, encoding="utf-8") as f:
-        return json.load(f)
+# =========================
+# HELPERS
+# =========================
 
 @pytest.fixture
-def profile_schema():
-    if not os.path.exists(PROFILE_SCHEMA_PATH):
-        pytest.skip("profile schema missing")
-    with open(PROFILE_SCHEMA_PATH, encoding="utf-8") as f:
-        return json.load(f)
+def json_response_factory(mocker):
+    def _factory(
+        status=200,
+        body=None,
+        headers=None,
+        etag=None,
+    ):
+        resp = mocker.Mock()
+        resp.status_code = status
 
-def assert_json_schema(instance, schema):
-    try:
-        validate(instance=instance, schema=schema)
-    except ValidationError as e:
-        pytest.fail(f"JSON Schema validation failed: {e}")
+        final_headers = {
+            "Content-Type": "application/json",
+            "Cache-Control": "no-store",
+            "Vary": "Authorization",
+        }
 
-# ============================================================
-# Redis mock and alias
-# ============================================================
+        if headers:
+            final_headers.update(headers)
 
-@pytest.fixture
-def mock_redis(mocker):
-    store = {}
-    redis_mock = Mock()
-    redis_mock.get.side_effect = lambda k: store.get(k)
-    redis_mock.set.side_effect = lambda k, v, ex=None: store.__setitem__(k, v)
-    redis_mock.delete.side_effect = lambda k: store.pop(k, None)
-    mocker.patch("redis.from_url", return_value=redis_mock)
-    return redis_mock
+        if etag:
+            final_headers["ETag"] = etag
 
-@pytest.fixture
-def redis_client(mock_redis):
-    return mock_redis
+        if "X-Request-ID" not in final_headers:
+            final_headers["X-Request-ID"] = "test-trace-id"
 
-# ============================================================
-# S3 mock and alias
-# ============================================================
+        resp.headers = final_headers
+        resp.json.return_value = body or {}
+        resp.content = json.dumps(body or {}).encode("utf-8")
 
-@pytest.fixture
-def mock_s3(mocker):
-    s3 = Mock()
-    data = {
-        "widgets": [
-            {
-                "id": "w1",
-                "visible": True,
-                "position": {"row": 0, "col": 0, "width": 1},
-                "size": {"width": 2, "height": 2},
-            }
-        ]
-    }
-    s3.get_object.return_value = {
-        "Body": Mock(read=lambda: json.dumps(data).encode("utf-8"))
-    }
-    s3.head_object.return_value = {}
-    s3.put_object.return_value = True
-    mocker.patch("boto3.session.Session.client", return_value=s3)
-    return s3
+        return resp
 
-@pytest.fixture
-def s3_client(mock_s3):
-    return mock_s3
-
-@pytest.fixture
-def mock_s3_fail(mocker):
-    mocker.patch("boto3.session.Session.client", side_effect=Exception("S3 unavailable"))
-    return True
-
-# ============================================================
-# Network control
-# ============================================================
-
-@pytest.fixture
-def allow_requests(mocker):
-    """
-    Явное разрешение сетевых вызовов через mocker.patch в тесте
-    """
-    return mocker
-
-@pytest.fixture(autouse=True)
-def block_real_network(mocker):
-    """
-    Запрещает любые реальные HTTP вызовы.
-    Тест обязан явно замокать requests.*
-    """
-    def _blocked(*args, **kwargs):
-        raise RuntimeError("REAL NETWORK CALL IS BLOCKED. USE MOCK.")
-
-    mocker.patch("requests.get", side_effect=_blocked)
-    mocker.patch("requests.post", side_effect=_blocked)
-    mocker.patch("requests.put", side_effect=_blocked)
-    mocker.patch("requests.patch", side_effect=_blocked)
-    mocker.patch("requests.delete", side_effect=_blocked)
-    mocker.patch("requests.head", side_effect=_blocked)
+    return _factory
