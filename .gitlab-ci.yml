@@ -17,7 +17,7 @@ run_autotests:
   stage: test
   script:
     - echo "🚀 Запуск автотестов Eflow (gateway, non-blocking)..."
-    - pytest tests/ --maxfail=1 --disable-warnings -q
+    - pytest tests/ --disable-warnings -q
   allow_failure: true
   tags:
     - apps
