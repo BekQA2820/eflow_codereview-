@@ -232,3 +232,11 @@ def block_real_network(mocker):
     mocker.patch("requests.put", side_effect=_blocked)
     mocker.patch("requests.patch", side_effect=_blocked)
     mocker.patch("requests.delete", side_effect=_blocked)
+    
+# ============================================================
+#  Backward compatibility alias
+# ============================================================
+
+@pytest.fixture
+def auth_header(auth_headers):
+    return auth_headers
