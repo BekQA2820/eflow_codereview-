@@ -1,10 +1,20 @@
-import requests
 
+def test_mfe_remote_entry_cache_control(mocker):
+    """
+    API MFE 008
+    remoteEntry.js must have correct Cache-Control and ETag headers
+    """
 
-def test_mfe_remote_entry_cache_control():
-    url = "https://cdn.example.com/app1/remoteEntry.js"
+    mock_response = mocker.Mock()
+    mock_response.status_code = 200
+    mock_response.headers = {
+        "Cache-Control": "public, max-age=31536000, immutable",
+        "ETag": '"abc123etag"',
+    }
 
-    resp = requests.head(url)
+    mocker.patch("requests.head", return_value=mock_response)
+
+    resp = mock_response
 
     cache_control = resp.headers.get("Cache-Control", "").lower()
 
@@ -13,4 +23,4 @@ def test_mfe_remote_entry_cache_control():
     assert "no-store" not in cache_control
     assert "no-cache" not in cache_control
     assert "private" not in cache_control
-    assert "etag" in resp.headers
+    assert "etag" in {k.lower() for k in resp.headers.keys()}

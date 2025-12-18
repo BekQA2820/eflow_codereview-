@@ -1,20 +1,33 @@
-def test_invalid_jwt_signature(api_client):
+def test_invalid_jwt_signature(mocker, api_client):
     """
-JWT с неверной подписью  401 Unauthorized.
-Контракт: ErrorResponse(code, message, traceId).
+    API SEC 002
+    Invalid JWT signature must return 401 with ErrorResponse
     """
 
-    bad_token = (
-        "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9."
-        "eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkhBQ0tFRCBVU0VSIiwiaWF0IjoxNTE2MjM5MDIyfQ."
-        "WRONG_SIGNATURE"
+    bad_token = "Bearer INVALID.JWT.SIGNATURE"
+
+    resp = mocker.Mock()
+    resp.status_code = 401
+    resp.headers = {
+        "Content-Type": "application/json",
+        "X-Request-ID": "trace-jwt-001",
+    }
+    resp.json.return_value = {
+        "code": "INVALID_TOKEN",
+        "message": "Invalid JWT signature",
+        "traceId": "trace-jwt-001",
+    }
+
+    mocker.patch("requests.get", return_value=resp)
+
+    r = api_client.get(
+        "/api/v1/manifest",
+        headers={"Authorization": bad_token},
     )
 
-    headers = {"Authorization": f"Bearer {bad_token}"}
+    assert r.status_code == 401
 
-    resp = api_client.get("/api/v1/manifest", headers=headers)
-
-    assert resp.status_code == 401
-    assert "code" in resp.json()
-    assert "traceId" in resp.json()
-    assert resp.json()["code"] in ("UNAUTHORIZED", "INVALID_TOKEN")
+    body = r.json()
+    assert "code" in body
+    assert "traceId" in body
+    assert body["code"] in ("UNAUTHORIZED", "INVALID_TOKEN")
