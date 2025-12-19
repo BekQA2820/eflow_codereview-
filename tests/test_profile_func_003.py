@@ -17,10 +17,8 @@ def _assert_iso8601(value: str):
 def test_profile_create_with_minimal_fields(mocker, api_client):
     """
     PROFILE FUNC 003
-    Создание профиля с минимальным набором полей
+    Создание профиля с минимальным набором обязательных полей
     """
-
-    profile_id = str(uuid.uuid4())
 
     create_body = {
         "name": "Ivan",
@@ -31,14 +29,14 @@ def test_profile_create_with_minimal_fields(mocker, api_client):
     }
 
     created_profile = {
-        "id": profile_id,
+        "id": str(uuid.uuid4()),
         **create_body,
         "created_at": "2025-01-01T10:00:00Z",
         "updated_at": "2025-01-01T10:00:00Z",
         "last_modified_by": "system",
     }
 
-    def make_response(status, body, etag):
+    def make_response(status: int, body: dict, etag: str):
         resp = mocker.Mock()
         resp.status_code = status
         resp.headers = {
@@ -52,24 +50,38 @@ def test_profile_create_with_minimal_fields(mocker, api_client):
         resp.content = json.dumps(body).encode("utf-8")
         return resp
 
-    r_post = make_response(201, created_profile, "etag-1")
-    r_get = make_response(200, created_profile, "etag-1")
+    r_post = make_response(201, created_profile, "etag-v1")
+    r_get = make_response(200, created_profile, "etag-v1")
 
-    mocker.patch("requests.request", side_effect=[r_post, r_get])
+    mocker.patch(
+        "requests.request",
+        side_effect=[r_post, r_get],
+    )
 
-    r1 = api_client.post(PROFILE_CREATE_PATH, json=create_body)
+    # -------------------------
+    # CREATE
+    # -------------------------
+    create_resp = api_client.post(PROFILE_CREATE_PATH, json=create_body)
 
-    assert r1.status_code == 201
-    body_post = r1.json()
+    assert create_resp.status_code == 201
+    assert create_resp.headers["ETag"] == "etag-v1"
+
+    body_post = create_resp.json()
 
     _assert_uuid(body_post["id"])
     _assert_iso8601(body_post["created_at"])
     _assert_iso8601(body_post["updated_at"])
 
-    assert r1.headers["ETag"] == "etag-1"
+    # -------------------------
+    # GET by returned id
+    # -------------------------
+    profile_id = body_post["id"]
 
-    r2 = api_client.get(PROFILE_GET_PATH.format(profile_id=profile_id))
-    body_get = r2.json()
+    get_resp = api_client.get(PROFILE_GET_PATH.format(profile_id=profile_id))
+
+    assert get_resp.status_code == 200
+    assert get_resp.headers["ETag"] == create_resp.headers["ETag"]
+
+    body_get = get_resp.json()
 
     assert body_get == body_post
-    assert r2.headers["ETag"] == r1.headers["ETag"]

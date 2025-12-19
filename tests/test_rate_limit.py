@@ -1,5 +1,3 @@
-
-
 MANIFEST_PATH = "/api/v1/manifest"
 
 
@@ -25,7 +23,8 @@ def test_rate_limit_per_user(mocker, api_client, token_valid):
         "traceId": "trace-rate-001",
     }
 
-    mocker.patch("requests.get", return_value=resp)
+    # ВАЖНО: мок именно requests.request
+    mocker.patch("requests.request", return_value=resp)
 
     r = api_client.get(MANIFEST_PATH, headers=headers)
 

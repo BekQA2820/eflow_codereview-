@@ -1,5 +1,3 @@
-
-
 def test_trace_id_for_4xx_errors(mocker, api_client):
     """
     API ERROR CONTRACT
@@ -18,7 +16,8 @@ def test_trace_id_for_4xx_errors(mocker, api_client):
         "traceId": "trace-4xx-001",
     }
 
-    mocker.patch("requests.get", return_value=resp)
+    # ВАЖНО: мок именно requests.request
+    mocker.patch("requests.request", return_value=resp)
 
     r = api_client.get("/api/v1/manifest")
 
