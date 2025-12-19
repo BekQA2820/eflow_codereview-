@@ -5,10 +5,6 @@ PROFILE_PATH = "/api/v1/profiles/items/{profile_id}"
 DENY_FIELDS = {"internalMeta", "debugInfo", "backendOnly"}
 
 
-def _assert_uuid(v):
-    uuid.UUID(v)
-
-
 def _assert_no_deny_fields(obj):
     if isinstance(obj, dict):
         for k, v in obj.items():
@@ -20,8 +16,12 @@ def _assert_no_deny_fields(obj):
 
 
 def test_profile_normalization_with_etag(mocker, api_client):
-    profile_id = str(uuid.uuid4())
+    """
+    PROFILE VALID 017
+    Значения нормализуются при PATCH, ETag обновляется
+    """
 
+    profile_id = str(uuid.uuid4())
     etag_v1 = '"v1"'
     etag_v2 = '"v2"'
 
@@ -54,10 +54,13 @@ def test_profile_normalization_with_etag(mocker, api_client):
         r.content = json.dumps(body).encode("utf-8")
         return r
 
-    r_get = make_resp(body_get_v1, etag_v1)
-    r_patch = make_resp(body_patch, etag_v2)
-
-    mocker.patch("requests.request", side_effect=[r_get, r_patch])
+    mocker.patch(
+        "requests.request",
+        side_effect=[
+            make_resp(body_get_v1, etag_v1),
+            make_resp(body_patch, etag_v2),
+        ],
+    )
 
     g = api_client.get(PROFILE_PATH.format(profile_id=profile_id))
     assert g.headers["ETag"] == etag_v1

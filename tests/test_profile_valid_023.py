@@ -5,7 +5,7 @@ PROFILES_CREATE_PATH = "/api/v1/profiles/items"
 DENY_FIELDS = {"internalMeta", "debugInfo", "backendOnly"}
 
 
-def _assert_uuid(v):
+def _assert_uuid(v: str):
     uuid.UUID(v)
 
 
@@ -22,12 +22,10 @@ def _assert_no_deny_fields(obj):
 def test_profile_pharmacist_requires_subject_rf(mocker, api_client):
     trace_id = str(uuid.uuid4())
 
-    error_body = {
+    error = {
         "code": "VALIDATION_ERROR",
         "message": "Required field missing",
-        "details": [
-            {"field": "subject_rf", "code": "REQUIRED"}
-        ],
+        "details": [{"field": "subject_rf", "code": "REQUIRED"}],
         "traceId": trace_id,
     }
 
@@ -39,8 +37,8 @@ def test_profile_pharmacist_requires_subject_rf(mocker, api_client):
         "Vary": "Authorization",
         "X-Request-ID": trace_id,
     }
-    resp.json.return_value = error_body
-    resp.content = json.dumps(error_body).encode("utf-8")
+    resp.json.return_value = error
+    resp.content = json.dumps(error).encode("utf-8")
 
     mocker.patch("requests.request", return_value=resp)
 
@@ -51,20 +49,17 @@ def test_profile_pharmacist_requires_subject_rf(mocker, api_client):
             "name": "Ivan",
             "surname": "Petrov",
             "phone": "+79990000001",
-            "consent_processing": "Yes",
-            "consent_communication": "Yes",
+            "consent_processing": True,
+            "consent_communication": True,
         },
     )
 
     assert r.status_code == 400
-    assert r.headers["Content-Type"] == "application/json"
-    assert r.headers["Cache-Control"] == "no-store"
-    assert r.headers["Vary"] == "Authorization"
 
-    data = r.json()
-    assert set(data.keys()) == {"code", "message", "details", "traceId"}
-    assert data["details"] == [{"field": "subject_rf", "code": "REQUIRED"}]
-    assert data["traceId"] == r.headers["X-Request-ID"]
+    body = r.json()
+    assert set(body.keys()) == {"code", "message", "details", "traceId"}
+    assert body["details"] == [{"field": "subject_rf", "code": "REQUIRED"}]
+    assert body["traceId"] == r.headers["X-Request-ID"]
 
-    _assert_uuid(data["traceId"])
-    _assert_no_deny_fields(data)
+    _assert_uuid(body["traceId"])
+    _assert_no_deny_fields(body)

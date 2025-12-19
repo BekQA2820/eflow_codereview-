@@ -5,7 +5,7 @@ PROFILE_PATH = "/api/v1/profiles/items/{profile_id}"
 DENY_FIELDS = {"internalMeta", "debugInfo", "backendOnly"}
 
 
-def _assert_uuid(v):
+def _assert_uuid(v: str):
     uuid.UUID(v)
 
 
@@ -20,6 +20,11 @@ def _assert_no_deny_fields(obj):
 
 
 def test_profile_empty_string_not_allowed(mocker, api_client):
+    """
+    PROFILE VALID 015
+    Пустая строка недопустима для текстовых полей
+    """
+
     profile_id = str(uuid.uuid4())
     trace_id = str(uuid.uuid4())
 

@@ -1,12 +1,17 @@
 import json
 import uuid
+from datetime import datetime
 
 PROFILE_PATH = "/api/v1/profiles/items/{profile_id}"
 DENY_FIELDS = {"internalMeta", "debugInfo", "backendOnly"}
 
 
-def _assert_uuid(v):
+def _assert_uuid(v: str):
     uuid.UUID(v)
+
+
+def _assert_iso8601(v: str):
+    datetime.fromisoformat(v.replace("Z", "+00:00"))
 
 
 def _assert_no_deny_fields(obj):
@@ -20,6 +25,11 @@ def _assert_no_deny_fields(obj):
 
 
 def test_profile_get_success(mocker, api_client):
+    """
+    PROFILE VALID 002
+    Успешное получение профиля
+    """
+
     profile_id = str(uuid.uuid4())
     trace_id = str(uuid.uuid4())
 
@@ -63,4 +73,6 @@ def test_profile_get_success(mocker, api_client):
     }
 
     _assert_uuid(data["profile_uuid"])
+    _assert_iso8601(data["created_at"])
+    _assert_iso8601(data["updated_at"])
     _assert_no_deny_fields(data)

@@ -5,7 +5,7 @@ PROFILE_PATH = "/api/v1/profiles/items/{profile_id}"
 DENY_FIELDS = {"internalMeta", "debugInfo", "backendOnly"}
 
 
-def _assert_uuid(v):
+def _assert_uuid(v: str):
     uuid.UUID(v)
 
 
@@ -20,15 +20,18 @@ def _assert_no_deny_fields(obj):
 
 
 def test_profile_invalid_value_error(mocker, api_client):
+    """
+    PROFILE VALID 020
+    Некорректное значение поля - 400 с ErrorResponse
+    """
+
     profile_id = str(uuid.uuid4())
     trace_id = str(uuid.uuid4())
 
     error_body = {
         "code": "VALIDATION_ERROR",
         "message": "Invalid value",
-        "details": [
-            {"field": "birthDate", "code": "INVALID_VALUE"}
-        ],
+        "details": [{"field": "birthDate", "code": "INVALID_VALUE"}],
         "traceId": trace_id,
     }
 
@@ -53,12 +56,13 @@ def test_profile_invalid_value_error(mocker, api_client):
 
     assert r.status_code == 400
     assert r.headers["Content-Type"] == "application/json"
+    assert r.headers["Cache-Control"] == "no-store"
     assert r.headers["Vary"] == "Authorization"
 
     data = r.json()
     assert set(data.keys()) == {"code", "message", "details", "traceId"}
     assert data["details"] == [{"field": "birthDate", "code": "INVALID_VALUE"}]
-    assert data["traceId"] == r.headers["X-Request-ID"]
 
+    assert data["traceId"] == r.headers["X-Request-ID"]
     _assert_uuid(data["traceId"])
     _assert_no_deny_fields(data)

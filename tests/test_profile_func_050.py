@@ -6,11 +6,7 @@ PROFILE_PATH = "/api/v1/profiles/items/{profile_id}"
 DENY_FIELDS = {"internalMeta", "debugInfo", "backendOnly"}
 
 
-def _assert_uuid(v):
-    uuid.UUID(v)
-
-
-def _assert_iso8601(v):
+def _assert_iso8601(v: str):
     datetime.fromisoformat(v.replace("Z", "+00:00"))
 
 
@@ -25,6 +21,11 @@ def _assert_no_deny_fields(obj):
 
 
 def test_profile_atomic_patch_multiple_fields(mocker, api_client):
+    """
+    PROFILE FUNC 050
+    PATCH с несколькими полями должен применяться атомарно
+    """
+
     profile_id = str(uuid.uuid4())
     etag_v1 = "etag-1"
     etag_v2 = "etag-2"
@@ -64,32 +65,39 @@ def test_profile_atomic_patch_multiple_fields(mocker, api_client):
     mocker.patch(
         "requests.request",
         side_effect=[
-            resp(base, etag_v1),
-            resp(updated, etag_v2),
-            resp(updated, etag_v2),
+            resp(base, etag_v1),     # GET
+            resp(updated, etag_v2),  # PATCH
+            resp(updated, etag_v2),  # GET after
         ],
     )
 
-    g1 = api_client.get(PROFILE_PATH.format(profile_id=profile_id))
-    assert g1.headers["ETag"] == etag_v1
+    # GET before
+    r1 = api_client.get(PROFILE_PATH.format(profile_id=profile_id))
+    assert r1.headers["ETag"] == etag_v1
 
-    p = api_client.patch(
+    # PATCH multiple fields
+    r2 = api_client.patch(
         PROFILE_PATH.format(profile_id=profile_id),
         headers={"If-Match": etag_v1},
-        json={"displayName": "Ivan P.", "department": "Marketing"},
+        json={
+            "displayName": "Ivan P.",
+            "department": "Marketing",
+        },
     )
 
-    assert p.status_code == 200
-    assert p.headers["ETag"] == etag_v2
+    assert r2.status_code == 200
+    assert r2.headers["ETag"] == etag_v2
 
-    body_patch = p.json()
+    body_patch = r2.json()
     _assert_no_deny_fields(body_patch)
 
     assert body_patch["displayName"] == "Ivan P."
     assert body_patch["department"] == "Marketing"
     assert body_patch["phone"] == base["phone"]
     assert body_patch["created_at"] == base["created_at"]
+    assert body_patch["updated_at"] != base["updated_at"]
     _assert_iso8601(body_patch["updated_at"])
 
-    g2 = api_client.get(PROFILE_PATH.format(profile_id=profile_id))
-    assert g2.json() == body_patch
+    # GET after
+    r3 = api_client.get(PROFILE_PATH.format(profile_id=profile_id))
+    assert r3.json() == body_patch

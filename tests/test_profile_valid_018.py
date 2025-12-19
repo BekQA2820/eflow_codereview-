@@ -1,12 +1,17 @@
 import json
 import uuid
+from datetime import datetime
 
 PROFILE_PATH = "/api/v1/profiles/items/{profile_id}"
 DENY_FIELDS = {"internalMeta", "debugInfo", "backendOnly"}
 
 
-def _assert_uuid(v):
+def _assert_uuid(v: str):
     uuid.UUID(v)
+
+
+def _assert_iso8601(v: str):
+    datetime.fromisoformat(v.replace("Z", "+00:00"))
 
 
 def _assert_no_deny_fields(obj):
@@ -20,6 +25,11 @@ def _assert_no_deny_fields(obj):
 
 
 def test_profile_unicode_serialization(mocker, api_client):
+    """
+    PROFILE VALID 018
+    Unicode корректно сериализуется и возвращается в JSON
+    """
+
     profile_id = str(uuid.uuid4())
     etag_v1 = '"v1"'
     etag_v2 = '"v2"'
@@ -59,6 +69,7 @@ def test_profile_unicode_serialization(mocker, api_client):
     )
 
     g = api_client.get(PROFILE_PATH.format(profile_id=profile_id))
+    assert g.status_code == 200
     assert g.headers["ETag"] == etag_v1
 
     p = api_client.patch(
@@ -67,11 +78,12 @@ def test_profile_unicode_serialization(mocker, api_client):
         headers={"If-Match": etag_v1},
     )
 
-    assert p.headers["ETag"] == etag_v2
+    assert p.status_code == 200
     assert p.headers["Content-Type"] == "application/json"
+    assert p.headers["ETag"] == etag_v2
 
     data = p.json()
     assert data["displayName"] == "Иван Петров"
-
+    _assert_iso8601(data["updated_at"])
     _assert_uuid(p.headers["X-Request-ID"])
     _assert_no_deny_fields(data)

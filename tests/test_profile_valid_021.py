@@ -5,7 +5,7 @@ PROFILE_PATH = "/api/v1/profiles/items/{profile_id}"
 DENY_FIELDS = {"internalMeta", "debugInfo", "backendOnly"}
 
 
-def _assert_uuid(v):
+def _assert_uuid(v: str):
     uuid.UUID(v)
 
 
@@ -20,15 +20,18 @@ def _assert_no_deny_fields(obj):
 
 
 def test_profile_required_field_missing(mocker, api_client):
+    """
+    PROFILE VALID 021
+    Обязательное поле отсутствует - 400 с ErrorResponse
+    """
+
     profile_id = str(uuid.uuid4())
     trace_id = str(uuid.uuid4())
 
     error_body = {
         "code": "VALIDATION_ERROR",
         "message": "Required field missing",
-        "details": [
-            {"field": "displayName", "code": "REQUIRED"}
-        ],
+        "details": [{"field": "displayName", "code": "REQUIRED"}],
         "traceId": trace_id,
     }
 
@@ -57,8 +60,9 @@ def test_profile_required_field_missing(mocker, api_client):
     assert r.headers["Vary"] == "Authorization"
 
     data = r.json()
+    assert set(data.keys()) == {"code", "message", "details", "traceId"}
     assert data["details"] == [{"field": "displayName", "code": "REQUIRED"}]
-    assert data["traceId"] == r.headers["X-Request-ID"]
 
+    assert data["traceId"] == r.headers["X-Request-ID"]
     _assert_uuid(data["traceId"])
     _assert_no_deny_fields(data)
