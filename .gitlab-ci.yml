@@ -1,6 +1,5 @@
 stages:
   - test
-  - notify
 
 variables:
   PYTHONPATH: "."
@@ -13,9 +12,6 @@ default:
     - python -m pip install --upgrade pip
     - pip install --no-cache-dir -r requirements.txt
 
-# ============================================================
-# Основной запуск автотестов (СТРОГИЙ)
-# ============================================================
 run_autotests:
   stage: test
   script:
@@ -31,22 +27,6 @@ run_autotests:
   tags:
     - apps
   rules:
-    - if: '$CI_MERGE_REQUEST_ID'
-      when: on_success
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
     - if: '$CI_COMMIT_BRANCH == "main"'
-      when: on_success
     - if: '$CI_PIPELINE_SOURCE == "web"'
-      when: manual
-    - if: '$CI_PIPELINE_SOURCE == "pipeline"'
-      when: manual
-    - when: never
-
-# ============================================================
-# Уведомление ТОЛЬКО при падении тестов
-# ============================================================
-notify_fail:
-  stage: notify
-  script:
-    - echo "❌ Автотесты упали. Проверь job run_autotests и отчет report.xml."
-  when: on_failure
-  allow_failure: true
