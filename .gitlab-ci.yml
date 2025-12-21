@@ -16,8 +16,8 @@ default:
 run_autotests:
   stage: test
   script:
-    - echo "🚀 Запуск автотестов Eflow (gateway, non-blocking)..."
-    - pytest tests/ --disable-warnings -q
+    - echo " Запуск автотестов Eflow (gateway, non-blocking)..."
+    - pytest tests/ -q
   allow_failure: true
   tags:
     - apps
@@ -36,6 +36,6 @@ run_autotests:
 notify_fail:
   stage: notify
   script:
-    - echo "❗ Некоторые автотесты упали. См. логи job run_autotests."
+    - echo " Некоторые автотесты упали. См. логи job run_autotests."
   when: on_failure
   allow_failure: true
