@@ -4,22 +4,32 @@ stages:
 
 variables:
   PYTHONPATH: "."
+  # Отключает предупреждения pip о запуске под root
   PIP_ROOT_USER_ACTION: "ignore"
+  # Отключает проверку обновлений pip при каждой установке
+  PIP_DISABLE_PIP_VERSION_CHECK: "1"
 
 default:
   image: python:3.12
   before_script:
-    # 1. Сначала обновляем pip
     - python -m pip install --upgrade pip
-    - pip install -r requirements.txt
+    - pip install --no-cache-dir -r requirements.txt
 
 # Основной запуск автотестов
 run_autotests:
   stage: test
   script:
-    - echo "Запуск автотестов Eflow..."
-    - pytest tests/ -v
-  allow_failure: true    
+    - echo "🚀 Запуск автотестов Eflow..."
+    # --junitxml создает отчет для GitLab, чтобы видеть ошибки прямо в интерфейсе
+    - pytest tests/ -v --junitxml=report.xml
+  allow_failure: true
+  artifacts:
+    when: always
+    paths:
+      - report.xml
+    reports:
+      junit: report.xml
+    expire_in: 1 week
   tags:
     - apps
   rules:
@@ -33,9 +43,10 @@ run_autotests:
       when: manual
     - when: never
 
+# Уведомление при падении тестов
 notify_fail:
   stage: notify
   script:
-    - echo "Некоторые автотесты упали. См. логи job run_autotests."
+    - echo "❌ Некоторые автотесты упали. Проверьте артефакты и логи в job 'run_autotests'."
   when: on_failure
   allow_failure: true
