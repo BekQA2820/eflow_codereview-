@@ -4,21 +4,22 @@ stages:
 
 variables:
   PYTHONPATH: "."
+  PIP_ROOT_USER_ACTION: "ignore"
 
 default:
   image: python:3.12
   before_script:
-    - pip install --root-user-action=ignore -r requirements.txt || true
-    - pip install --upgrade pip
-    - pip install -r requirements.txt || true
+    # 1. Сначала обновляем pip
+    - python -m pip install --upgrade pip
+    - pip install -r requirements.txt
 
-# Основной запуск автотестов (не блокирует прод)
+# Основной запуск автотестов
 run_autotests:
   stage: test
   script:
-    - echo " Запуск автотестов Eflow (gateway, non-blocking)..."
-    - pytest tests/ -q
-  allow_failure: true
+    - echo "Запуск автотестов Eflow..."
+    - pytest tests/ -v
+  allow_failure: true    
   tags:
     - apps
   rules:
@@ -32,10 +33,9 @@ run_autotests:
       when: manual
     - when: never
 
-# Уведомление при падении тестов (информативно)
 notify_fail:
   stage: notify
   script:
-    - echo " Некоторые автотесты упали. См. логи job run_autotests."
+    - echo "Некоторые автотесты упали. См. логи job run_autotests."
   when: on_failure
   allow_failure: true
