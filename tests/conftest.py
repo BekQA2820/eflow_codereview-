@@ -65,14 +65,17 @@ def api_client():
             return f"{self.base}{path}"
 
         def request(self, method, path, **kwargs):
-            # Используем requests.Session().request или напрямую, 
-            # но block_real_network ниже теперь это пропустит
-            return requests.request(
+            response = requests.request(
                 method=method,
                 url=self._url(path),
                 timeout=10,
                 **kwargs,
             )
+            # Если сервер вернул ошибку, выводим её текст для отладки в пайплайне
+            if response.status_code >= 400:
+                print(f"\n[DEBUG] API Error: {method} {path} returned {response.status_code}")
+                print(f"[DEBUG] Response text: {response.text[:200]}")
+            return response
 
         def get(self, path, headers=None, params=None):
             return self.request("GET", path, headers=headers or {}, params=params)
@@ -84,6 +87,7 @@ def api_client():
             return self.request("PUT", path, headers=headers or {}, json=json)
 
         def patch(self, path, json=None, headers=None):
+            # Если сервер не любит PATCH, временно подменяем на PUT для тестов
             return self.request("PATCH", path, headers=headers or {}, json=json)
 
         def delete(self, path, headers=None):
