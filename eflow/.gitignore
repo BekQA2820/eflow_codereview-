@@ -1,8 +1,9 @@
 # Python / PyCharm
+.idea/
+.venv/
 venv/
 __pycache__/
 *.pyc
-../.idea/
 .pytest_cache/
 
 # Allure Reports / Logs
