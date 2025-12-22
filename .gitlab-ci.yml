@@ -15,7 +15,7 @@ default:
 run_autotests:
   stage: test
   script:
-    - echo "🚀 Запуск автотестов Eflow"
+    - echo "Запуск автотестов Eflow"
     - pytest tests/ -v --junitxml=report.xml || true
   allow_failure: true
   artifacts:

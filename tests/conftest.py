@@ -132,7 +132,6 @@ def s3_client():
 
 @pytest.fixture
 def mock_s3_fail(mocker):
-    """Фикстура для эмуляции ошибки S3 (test_api_registry_002.py)"""
     mock = Mock()
     mock.get_object.side_effect = Exception("S3 Service Unavailable")
     mocker.patch("boto3.client", return_value=mock)
