@@ -54,7 +54,7 @@ def test_profile_proto_008_array_item_with_unknown_field_rejected(api_client):
     assert xrid, "Missing X-Request-ID"
     assert xrid == body["traceId"], "X-Request-ID must equal body.traceId"
 
-    # Семантика
+   
     assert body["code"] in ("FIELD_NOT_ALLOWED", "VALIDATION_ERROR", "BAD_REQUEST"), f"Unexpected code: {body['code']!r}"
 
     # details: phones[0].internal
@@ -76,7 +76,7 @@ def test_profile_proto_008_array_item_with_unknown_field_rejected(api_client):
 
         assert any((d or {}).get("code") == "NOT_ALLOWED" for d in details if isinstance(d, dict)), "details must include NOT_ALLOWED"
 
-    # Кэш инварианты для 4xx (не супер жестко)
+    
     cc = (r.headers.get("Cache-Control") or "").lower()
     if cc:
         assert "no-store" in cc or "no-cache" in cc, f"Unexpected Cache-Control for 4xx: {cc!r}"
