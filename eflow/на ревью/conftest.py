@@ -6,7 +6,7 @@ import requests
 import urllib3
 from unittest.mock import MagicMock
 
-# Отключаем варнинги о незащищенном соединении (актуально для dev-стендов)
+
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 # ============================================================
