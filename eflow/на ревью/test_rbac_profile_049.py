@@ -23,7 +23,7 @@ def test_rbac_profile_049_user_data_isolation_same_roles(api_client):
     headers_a = {"Authorization": "Bearer A"}
     headers_b = {"Authorization": "Bearer B"}
 
-    # Реальные запросы для разных ролей
+    
     r_a1 = api_client.get(PATH_A, headers=headers_a)
     r_a2 = api_client.get(PATH_A, headers=headers_a)
     r_b = api_client.get(PATH_B, headers=headers_b)
