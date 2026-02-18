@@ -12,7 +12,7 @@ def _assert_uuid(v: str):
 
 @allure.epic("Profile")
 @allure.feature("Functional")
-@pytest.mark.integration  # Убедитесь, что тест будет выполняться как интеграционный
+@pytest.mark.integration 
 def test_profile_func_021_get_reflects_latest_patch(api_client):
     trace_ids = [str(uuid.uuid4()) for _ in range(3)]
     etags = ['"etag-1"', '"etag-2"']
