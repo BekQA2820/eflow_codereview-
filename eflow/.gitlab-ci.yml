@@ -7,10 +7,10 @@ variables:
   PYTHONPATH: "."
   PIP_ROOT_USER_ACTION: "ignore"
   PIP_DISABLE_PIP_VERSION_CHECK: "1"
-  # Allure - не трогаю логику, оставляю как было
+  
   ALLURE_ENDPOINT: "https://testops.astrazenecacloud.ru"
   ALLURE_PROJECT_ID: "5"
-  # Новый стенд
+  
   BASE_URL: "https://dev-eflow.astrazenecacloud.ru"
   API_PREFIX: "/gateway/api/v1"
 
@@ -72,7 +72,7 @@ test_eflow_integration:
     - apps
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
-      when: always  # убрал 'manual', теперь всегда будет запускаться на main ветке
+      when: always  
     - when: never
 
 upload_allure_report:
