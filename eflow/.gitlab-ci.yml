@@ -1,22 +1,36 @@
 stages:
   - test
+  - upload
+  - notify
 
 variables:
   PYTHONPATH: "."
   PIP_ROOT_USER_ACTION: "ignore"
   PIP_DISABLE_PIP_VERSION_CHECK: "1"
+  # Allure - не трогаю логику, оставляю как было
+  ALLURE_ENDPOINT: "https://testops.astrazenecacloud.ru"
+  ALLURE_PROJECT_ID: "5"
+  # Новый стенд
+  BASE_URL: "https://dev-eflow.astrazenecacloud.ru"
+  API_PREFIX: "/gateway/api/v1"
 
-default:
-  image: python:3.12
-  before_script:
-    - python -m pip install --upgrade pip
-    - pip install --no-cache-dir -r requirements.txt
+before_script:
+  - python -V
+  - pip install --upgrade pip
+  - pip install --no-cache-dir -r requirements.txt
+  - pip install --no-cache-dir allure-pytest
 
-run_autotests:
+test_eflow_service:
   stage: test
+  image: python:3.12
   script:
-    - echo "Запуск автотестов Eflow"
-    - pytest tests/ -v --junitxml=report.xml || true
+    - echo "Запуск автотестов Eflow (mock/smart-mock режим по умолчанию)"
+    - pytest tests/ -v --alluredir=build/allure-results --junitxml=report.xml || true
+    - |
+      if [ ! -d "build/allure-results" ] || [ -z "$(ls -A build/allure-results)" ]; then
+        echo "❌ Allure-отчёты не сгенерированы: build/allure-results пуст"
+        exit 1
+      fi
   allow_failure: true
   artifacts:
     when: always
@@ -24,8 +38,62 @@ run_autotests:
       junit: report.xml
     paths:
       - report.xml
+      - build/allure-results/
     expire_in: 1 week
   tags:
     - apps
   rules:
+    - if: '$CI_PIPELINE_SOURCE == "schedule"'
+    - if: '$CI_MERGE_REQUEST_ID'
+    - if: '$CI_COMMIT_BRANCH == "main"'
     - when: always
+
+test_eflow_integration:
+  stage: test
+  image: python:3.12
+  script:
+    - echo "Запуск INTEGRATION автотестов Eflow (реальный стенд)"
+    - pytest -m integration tests/ -v --alluredir=build/allure-results-integration --junitxml=report-integration.xml || true
+    - |
+      if [ ! -d "build/allure-results-integration" ] || [ -z "$(ls -A build/allure-results-integration)" ]; then
+        echo "❌ Allure-отчёты не сгенерированы: build/allure-results-integration пуст"
+        exit 1
+      fi
+  allow_failure: true
+  artifacts:
+    when: always
+    reports:
+      junit: report-integration.xml
+    paths:
+      - report-integration.xml
+      - build/allure-results-integration/
+    expire_in: 1 week
+  tags:
+    - apps
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
+      when: always  # убрал 'manual', теперь всегда будет запускаться на main ветке
+    - when: never
+
+upload_allure_report:
+  stage: upload
+  image: alpine:latest
+  before_script:
+    - apk add --no-cache curl ca-certificates
+  script:
+    - curl -fsSL https://github.com/allure-framework/allurectl/releases/latest/download/allurectl_linux_amd64 -o allurectl
+    - chmod +x allurectl
+    - ./allurectl upload --project-id "$ALLURE_PROJECT_ID" --endpoint "$ALLURE_ENDPOINT" --insecure build/allure-results
+  tags:
+    - apps
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
+
+notify_fail:
+  stage: notify
+  image: alpine:latest
+  script:
+    - if [ -f ci-notify.sh ]; then chmod +x ci-notify.sh && ./ci-notify.sh "😨 Тест провален! 🔥"; fi
+  when: on_failure
+  tags:
+    - apps
